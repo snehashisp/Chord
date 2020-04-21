@@ -22,10 +22,10 @@ class FingerTable():
 
 	def insertNode(self, nodeid):
 
-		index = 0, id = 0
+		index = 0
 		while index < len(self._table):
 			next_node = (self._nodeid + 2**index) % self._maxnodes
-			if (nodeid - next_nonde) % self._maxnodes < (self._table[index] - next_node) % self._maxnodes:
+			if (nodeid - next_node) % self._maxnodes < (self._table[index] - next_node) % self._maxnodes:
 				self._table[index] = nodeid
 			index += 1
 

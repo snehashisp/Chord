@@ -31,22 +31,22 @@ class MessageExecutor():
 			)
 		else:
 			self._comm.sendMessage(
-				self._message_creator.createError({"key":key,"response":"NOT FOUND"}),
-				initiator["ip"], 
-				initiator["port"]
+				self._message_creator.createError({"key":retrieve_message["info"], "response":"NOT FOUND"}),
+				retrieve_message["initiator"]["ip"], 
+				retrieve_message["initiator"]["port"]
 			)
 
 	def _execKeyLookup(self, key, initiator, updator = None):
-		value = self._hash_table.getValue(key):
+		value = self._hash_table.getValue(key)
 		if value:
 			self._comm.sendMessage(
-				self._message_creator.createResponse({"key":key, "value":value})
+				self._message_creator.createResponse({"key":key, "value":value}),
 				initiator["ip"],
 				initiator["port"]
 			)
 			if updator:
 				self._comm.sendMessage(
-					self._message_creator.createPutKey(key, value, 2)
+					self._message_creator.createPutKey(key, value, 2),
 					updator["ip"],
 					updator["port"]
 				)
@@ -66,7 +66,7 @@ class MessageExecutor():
 				self._execRetrieve(json.dumps(keyMessage))
 			else:
 				self._comm.sendMessage(
-					self._message_creator.createError({"key":key,"response":"NOT FOUND"}),
+					self._message_creator.createError({"key":keyMessage["info"],"response":"NOT FOUND"}),
 					keyMessage["initiator"]["ip"], 
 					keyMessage["initiator"]["port"]
 				)
@@ -77,7 +77,7 @@ class MessageExecutor():
 			next_node = self._getNextNode()
 			if next_node:
 				self._comm.sendMessage(
-					json.dumps(keyMessage),
+					json.dumps(replicate_message),
 					next_node["ip"],
 					next_node["port"]
 				)
@@ -99,7 +99,7 @@ class MessageExecutor():
 	def join(self, joinMessage):
 		joinMessage = json.loads(joinMessage)
 		self._comm.sendMessage({
-			self._message_creator.createJoinResponse(self._finger_table.getTable())
+			self._message_creator.createJoinResponse(self._finger_table.getTable()),
 			joinMessage["meta"]["ip"],
 			joinMessage["meta"]["port"]
 		})
@@ -113,7 +113,7 @@ class MessageExecutor():
 	def updateTable(self, updateTableMessage):
 		updateTableMessage = json.loads(updateTableMessage)
 		self._comm.sendMessage({
-			self._message_creator,createUpdateTableResponse(),
+			self._message_creator.createUpdateTableResponse(),
 			updateTableMessage["meta"]["ip"],
 			updateTableMessage["meta"]["port"]
 		})
@@ -124,7 +124,7 @@ class MessageExecutor():
 
 	def routeKeyMessage(self, routeMessage):
 		routeMessage = json.loads(routeMessage)
-		next_node = self._finger_table.getNextHop(keyMessage["info"])
+		next_node = self._finger_table.getNextHop(routeMessage["info"])
 		successor = self._finger_table.getSuccessorNode()
 		next_node = self._hash_table.getNodeInfo(next_node)
 		if next_node == successor:

@@ -45,7 +45,7 @@ class Messages():
 	def createPutKey(self, key, value, replica_count):
 		return json.dumps(self._message.update({
 			"type":"put",
-			"replicas":replicate_count,
+			"replicas":replica_count,
 			"info": {
 				"key":key,
 				"value":value
@@ -70,7 +70,7 @@ class Messages():
 	#update message to update finger table
 	def createUpdateTable(self, nodeid):
 		return json.dumps(self._message.update({
-			"type":"table_update"
+			"type":"table_update",
 			"info":nodeid
 			}))
 
@@ -82,7 +82,7 @@ class Messages():
 
 	def createResponse(self, message):
 		return json.dumps(self._message.update({
-			"type":"response"
+			"type":"response",
 			"info":message
 			}))
 

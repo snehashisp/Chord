@@ -10,7 +10,7 @@ class HashTable():
 		return self._hash_map.get(key, None)
 
 	def getNodeInfo(self, nodeid):
-		return self._hash_map.get(key, None)
+		return self._hash_map.get(nodeid, None)
 
 	def putNodeInfo(self, nodeid, ip, port):
 		self._hash_map[nodeid] = {"ip":ip, "port":port}
