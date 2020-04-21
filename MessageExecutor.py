@@ -46,7 +46,7 @@ class MessageExecutor():
 			)
 			if updator:
 				self._comm.sendMessage(
-					self._message_creator.createPutKey(key, value, 1)
+					self._message_creator.createPutKey(key, value, 2)
 					updator["ip"],
 					updator["port"]
 				)
@@ -64,12 +64,16 @@ class MessageExecutor():
 			keyMessage["hops"] -= 1
 			if keyMessage["hops"] > 0:
 				self._execRetrieve(json.dumps(keyMessage))
+			else:
+				self._comm.sendMessage(
+					self._message_creator.createError({"key":key,"response":"NOT FOUND"}),
+					keyMessage["initiator"]["ip"], 
+					keyMessage["initiator"]["port"]
+				)
 
-	def putKey(self, putKeyMessage):
-		keyMessage = json.loads(putKeyMessage)
-		self._hash_table.putKeyValue(keyMessage["info"]["key"], keyMessage["info"]["value"])
-		keyMessage["replicate"] -= 1
-		if keyMessage["replicate"] > 0:
+	def _execReplicate(self, replicate_message):
+		replicate_message["replica"] -= 1
+		if replicate_message["replica"] > 0:
 			next_node = self._getNextNode()
 			if next_node:
 				self._comm.sendMessage(
@@ -78,18 +82,60 @@ class MessageExecutor():
 					next_node["port"]
 				)
 
+	def putKey(self, putKeyMessage):
+		keyMessage = json.loads(putKeyMessage)
+		self._hash_table.putKeyValue(keyMessage["info"]["key"], keyMessage["info"]["value"])
+		self._execReplicate(keyMessage)
+
+	def delKey(self, delKeyMessage):
+		keyMessage = json.loads(delKeyMessage)
+		self._hash_table.deleteKey(keyMessage["info"])
+		self._execReplicate(keyMessage)
+
+	def _updateNodeInfo(self, node_info):
+		self._finger_table.insertNode(node_info["nodeid"])
+		self._hash_table.putNodeInfo(node_info["nodeid"], node_info["ip"], node_info["port"])
+
+	def join(self, joinMessage):
+		joinMessage = json.loads(joinMessage)
+		self._comm.sendMessage({
+			self._message_creator.createJoinResponse(self._finger_table.getTable())
+			joinMessage["meta"]["ip"],
+			joinMessage["meta"]["port"]
+		})
+
+	def joinResponse(self, joinResponseMessage):
+		joinResponseMessage = json.loads(joinResponseMessage)
+		self._updateNodeInfo(joinResponseMessage["meta"])
+		for nodeid in joinResponseMessage["info"]:
+			self._finger_table.insertNode(nodeid)
+
+	def updateTable(self, updateTableMessage):
+		updateTableMessage = json.loads(updateTableMessage)
+		self._comm.sendMessage({
+			self._message_creator,createUpdateTableResponse(),
+			updateTableMessage["meta"]["ip"],
+			updateTableMessage["meta"]["port"]
+		})
+
+	def updateTableResponse(self, updateTableResponseMessage):
+		updateTableResponseMessage = json.loads(updateTableResponseMessage)
+		self._updateNodeInfo(updateTableResponseMessage["meta"])
+
 	def routeKeyMessage(self, routeMessage):
 		routeMessage = json.loads(routeMessage)
 		next_node = self._finger_table.getNextHop(keyMessage["info"])
 		successor = self._finger_table.getSuccessorNode()
 		next_node = self._hash_table.getNodeInfo(next_node)
 		if next_node == successor:
-			message = json.dumps(routeMessage["message"])
+			message = routeMessage["message"]
+			if message["type"] == "join":
+				self._updateNodeInfo(message["meta"])
+
 		else:
 			message = json.dumps(routeMessage)
 		self._comm.sendMessage(message, next_node["ip"], next_node["port"])
 
-	
 
 
 

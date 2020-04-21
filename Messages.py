@@ -24,13 +24,13 @@ class Messages():
 			"info":key
 			}))
 
-		#route a key to its destination predecessor
+	#route a message to its destination predecessor
 	def createRouteMessage(self, key, message):
-		return json.dumps(self._message.update({
+		return json.dumps({
 			"type":"route",
 			"info":key,
 			"message":message
-			}))
+			})
 
 	#retrieve a key from another node to store in this node
 	def createRetrieve(self, key, initiator, hoplimit):
@@ -42,24 +42,29 @@ class Messages():
 			}))
 
 	#put key value pair
-	def createPutKey(self, key, value, replicate_count):
+	def createPutKey(self, key, value, replica_count):
 		return json.dumps(self._message.update({
 			"type":"put",
-			"replicate":replicate_count,
+			"replicas":replicate_count,
 			"info": {
 				"key":key,
 				"value":value
 				}
 			}))
 		
-	#response to join giving predecession node information
-	def createJoinResponse(self, predecessor, successor):
+	#delete a key
+	def createDelKey(self, key, replica_count):
 		return json.dumps(self._message.update({
-			"type":"init",
-			"info": {
-				"successor":successor,
-				"predecessor":predecessor
-				}
+			"type":"del",
+			"replicas": replica_count,
+			"info":key
+			}))
+
+	#response to join giving predecession node information
+	def createJoinResponse(self, successor_table):
+		return json.dumps(self._message.update({
+			"type":"join_response",
+			"info": successor_table
 			}))
 
 	#update message to update finger table
