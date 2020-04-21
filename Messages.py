@@ -25,10 +25,11 @@ class Messages():
 			}))
 
 		#route a key to its destination predecessor
-	def createRouteKey(self, key):
+	def createRouteMessage(self, key, message):
 		return json.dumps(self._message.update({
 			"type":"route",
-			"info":key
+			"info":key,
+			"message":message
 			}))
 
 	#retrieve a key from another node to store in this node
@@ -40,27 +41,17 @@ class Messages():
 			"initiator":initiator
 			}))
 
-	def createReplicate(self, key, value, hoplimit):
-		return json.dumps(self._message.update({
-			"type":"replicate",
-			"hops":hoplimit,
-			"info": {
-				"key":key,
-				"value":value
-				}
-			}))
-
 	#put key value pair
-	def createPutKey(self, key, value):
+	def createPutKey(self, key, value, replicate_count):
 		return json.dumps(self._message.update({
 			"type":"put",
+			"replicate":replicate_count,
 			"info": {
 				"key":key,
 				"value":value
 				}
 			}))
-
-
+		
 	#response to join giving predecession node information
 	def createJoinResponse(self, predecessor, successor):
 		return json.dumps(self._message.update({
