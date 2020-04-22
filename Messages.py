@@ -40,7 +40,7 @@ class Messages():
 	#retrieve a key from another node to store in this node
 	def createRetrieve(self, key, initiator, hoplimit):
 		return json.dumps(self._getUpdatedCopy({
-			"type":"retreive",
+			"type":"retrieve",
 			"hops":hoplimit,
 			"info":key,
 			"initiator":initiator

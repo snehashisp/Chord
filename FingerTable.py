@@ -9,15 +9,21 @@ class FingerTable():
 
 	def getNextHop(self, nodeid):
 
+		index = len(self._table) - 1
+		while index > 0 and self._table[index] == self._nodeid:
+			index -= 1
+		dist, _next, _prev = (self._nodeid - nodeid) % self._maxnodes, self._nodeid, self._table[index]
 		index = 0
-		_prev, _next = self._nodeid, self._table[index]
-		while not (nodeid >=  _prev and nodeid <= _next):
-			_prev = _next
-			index += 1
-			if index == len(self._table):
-				return self._nodeid, _prev
-			else:
+		while index < len(self._table):
+			current_distance = (self._table[index] - nodeid) % self._maxnodes
+			if current_distance < dist:
+				dist = current_distance
 				_next = self._table[index]
+				if index == 0:
+					_prev = self._nodeid
+				else:
+					_prev = self._table[index - 1]
+			index += 1
 		return _next, _prev
 
 	def insertNode(self, nodeid):
