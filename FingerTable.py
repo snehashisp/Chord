@@ -15,10 +15,10 @@ class FingerTable():
 			_prev = _next
 			index += 1
 			if index == len(self._table):
-				return _prev
+				return self._nodeid, _prev
 			else:
 				_next = self._table[index]
-		return _prev
+		return _next, _prev
 
 	def insertNode(self, nodeid):
 
@@ -44,5 +44,5 @@ class FingerTable():
 		return self._table[0]
 
 	def getTable(self):
-		return self._table
+		return list(set(self._table))
 

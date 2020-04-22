@@ -3,16 +3,31 @@ from Messages import *
 from HashTable import *
 from FingerTable import *
 import json
+import hashlib
 
 class MessageExecutor():
 
-	def __init__(self, nodeid, port, maxnodes, replicate_factor = 2):
+	def __init__(self, port, maxnodes, replicate_factor = 2):
 		self._comm = Comm(port)
-		self._message_creator = Messages(self._comm.ip, port, nodeid)
-		self._nodeid = nodeid
-		self._finger_table = FingerTable(nodeid, maxnodes)
+		self._nodeid = int(hashlib.sha1(self._comm.getIpPort().encode()).hexdigest(), 16) % maxnodes
+		self._message_creator = Messages(self._comm.ip, port, self._nodeid)
+		self._finger_table = FingerTable(self._nodeid, maxnodes)
 		self._hash_table = HashTable()
 		self._replicate_factor = replicate_factor
+		self._message_handler = {
+			"get": self.getKey,
+			"retrieve": self.retrieveKey,
+			"put": self.putKey,
+			"del": self.delKey,
+			"join": self.join,
+			"join_response": self.joinResponse,
+			"table_update": self.updateTable,
+			"table_response": self.updateTableResponse,
+			"route": self.routeMessage,
+			"error": print,
+			"response": print
+		}
+		self._hash_table.putNodeInfo(self._nodeid, self._comm.ip, self._comm.port)
 
 	def _getNextNode(self):
 		successor_nodeid = self._finger_table.getSuccessorNode()
@@ -53,13 +68,13 @@ class MessageExecutor():
 			return True
 		return False
 
-	def getKey(self, getKeyMessage):
-		keyMessage = json.loads(getKeyMessage)
+	def getKey(self, keyMessage):
+		#keyMessage = json.loads(getKeyMessage)
 		if not self._execKeyLookup(keyMessage["info"], keyMessage["meta"]):
 			self._execRetrieve(self._message_creator.createRetrieve(keyMessage["info"], keyMessage["meta"], self._replicate_factor))
 
-	def retrieveKey(self, retrieveKeyMessage):
-		keyMessage = json.loads(retrieveKeyMessage)
+	def retrieveKey(self, keyMessage):
+		# keyMessage = json.loads(retrieveKeyMessage)
 		if not self._execKeyLookup(keyMessage["info"], keyMessage["initiator"], keyMessage["meta"]):
 			keyMessage["hops"] -= 1
 			if keyMessage["hops"] > 0:
@@ -82,13 +97,13 @@ class MessageExecutor():
 					next_node["port"]
 				)
 
-	def putKey(self, putKeyMessage):
-		keyMessage = json.loads(putKeyMessage)
+	def putKey(self, keyMessage):
+		# keyMessage = json.loads(putKeyMessage)
 		self._hash_table.putKeyValue(keyMessage["info"]["key"], keyMessage["info"]["value"])
 		self._execReplicate(keyMessage)
 
-	def delKey(self, delKeyMessage):
-		keyMessage = json.loads(delKeyMessage)
+	def delKey(self, keyMessage):
+		# keyMessage = json.loads(delKeyMessage)
 		self._hash_table.deleteKey(keyMessage["info"])
 		self._execReplicate(keyMessage)
 
@@ -97,21 +112,23 @@ class MessageExecutor():
 		self._hash_table.putNodeInfo(node_info["nodeid"], node_info["ip"], node_info["port"])
 
 	def join(self, joinMessage):
-		joinMessage = json.loads(joinMessage)
-		self._comm.sendMessage({
-			self._message_creator.createJoinResponse(self._finger_table.getTable()),
+		# joinMessage = json.loads(joinMessage)
+		self._comm.sendMessage(
+			self._message_creator.createJoinResponse(
+				self._hash_table.createFingerTableInfo(self._finger_table.getTable())),
 			joinMessage["meta"]["ip"],
 			joinMessage["meta"]["port"]
-		})
+		)
 
 	def joinResponse(self, joinResponseMessage):
-		joinResponseMessage = json.loads(joinResponseMessage)
+		# joinResponseMessage = json.loads(joinResponseMessage)
 		self._updateNodeInfo(joinResponseMessage["meta"])
-		for nodeid in joinResponseMessage["info"]:
-			self._finger_table.insertNode(nodeid)
+		for node_info in joinResponseMessage["info"]:
+			self._finger_table.insertNode(node_info["nodeid"])
+			self._hash_table.putNodeInfo(node_info["nodeid"], node_info["ip"], node_info["port"])
 
 	def updateTable(self, updateTableMessage):
-		updateTableMessage = json.loads(updateTableMessage)
+		# updateTableMessage = json.loads(updateTableMessage)
 		self._comm.sendMessage({
 			self._message_creator.createUpdateTableResponse(),
 			updateTableMessage["meta"]["ip"],
@@ -119,22 +136,47 @@ class MessageExecutor():
 		})
 
 	def updateTableResponse(self, updateTableResponseMessage):
-		updateTableResponseMessage = json.loads(updateTableResponseMessage)
+		# updateTableResponseMessage = json.loads(updateTableResponseMessage)
 		self._updateNodeInfo(updateTableResponseMessage["meta"])
 
-	def routeKeyMessage(self, routeMessage):
-		routeMessage = json.loads(routeMessage)
-		next_node = self._finger_table.getNextHop(routeMessage["info"])
+	def routeMessage(self, routeMessage):
+		# routeMessage = json.loads(routeMessage)
+		key_successor, Key_predecessor = self._finger_table.getNextHop(routeMessage["info"])
 		successor = self._finger_table.getSuccessorNode()
-		next_node = self._hash_table.getNodeInfo(next_node)
-		if next_node == successor:
+		# print(next_node, successor)
+		if key_successor == successor:
 			message = routeMessage["message"]
 			if message["type"] == "join":
 				self._updateNodeInfo(message["meta"])
-
+			message = json.dumps(message)
+			next_node = key_successor
 		else:
 			message = json.dumps(routeMessage)
+			next_node = Key_predecessor
+		next_node = self._hash_table.getNodeInfo(next_node)
 		self._comm.sendMessage(message, next_node["ip"], next_node["port"])
+	
+	def handleMessage(self, message):
+		message = json.loads(message)
+		print("Message Received at handler", message)
+		while True:
+			try:
+				self._message_handler.get(message["type"])(message)
+				# print("Message Handled")
+				break
+			except Exception as e:
+				raise e
+				break
+				etype, data = str(e).split(",", 1)
+				if etype == 'conn_error':
+					del_nodeid = self._hash_table.getNodeId(data)
+					if del_nodeid:
+						self._finger_table.deleteNode(del_nodeid)
+						self._hash_table.deleteNode(del_nodeid)
+				else:
+					raise e
+
+
 
 
 

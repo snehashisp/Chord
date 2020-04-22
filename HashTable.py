@@ -1,3 +1,5 @@
+import copy
+
 class HashTable():
 
 	def __init__(self):
@@ -14,9 +16,23 @@ class HashTable():
 
 	def putNodeInfo(self, nodeid, ip, port):
 		self._hash_map[nodeid] = {"ip":ip, "port":port}
+		self._hash_map[ip + ":" + str(port)] = nodeid
 
 	def deleteKey(self, key):
 		self._hash_map.pop(key)
 
 	def deleteNode(self, nodeid):
-		self._hash_map.pop(nodeid)
+		data = self._hash_map.pop(nodeid)
+		self._hash_map.pop(data["ip"] + ":" + str(data["port"]))
+
+	def getNodeId(self, ip_port):
+		return self._hash_map.get(ip_port, None)
+
+	def createFingerTableInfo(self, nodeids):
+		finger_info = []
+		for nodeid in nodeids:
+			node_info = copy.deepcopy(self.getNodeInfo(nodeid))
+			if node_info:
+				node_info.update({"nodeid":nodeid})
+				finger_info.append(node_info)
+		return finger_info
