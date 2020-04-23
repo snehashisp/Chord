@@ -6,12 +6,14 @@ import time
 
 class Node():
 
-    def __init__(self, port, maxnodes, replicate_factor = 0):
+    def __init__(self, port, maxnodes, replicate_factor = 2, periodic_updates_interval = 5):
         self.message_executor = MessageExecutor.MessageExecutor(port, maxnodes, replicate_factor)
         self.replicate_factor = replicate_factor
+        self.maxnodes = maxnodes
         self.nodeid = self.message_executor._nodeid
         self.comm = self.message_executor._comm
         self._message_thread_status = False
+        self._periodic_updates_interval = periodic_updates_interval
         print("Node Initialized With ", self.nodeid, self.comm.getIpPort())
         # print(self.message_executor._finger_table._table)
 
@@ -28,17 +30,30 @@ class Node():
         print("Successfully joined network")
         # print(self.message_executor._finger_table._table)
 
+    def _periodic_updates(self):
+        while self._message_thread_status:
+            index = 0
+            query_node = (self.nodeid +  2**index) % self.maxnodes
+            while 2**index < self.maxnodes:
+                requestUpdateMessage = self.message_executor._message_creator.createUpdateTable()
+                routeUpdateMessage = self.message_executor._message_creator.createRouteMessage(query_node, requestUpdateMessage)
+                self.message_executor.handleMessage(requestUpdateMessage)
+                index += 1
+                query_node = (self.nodeid +  2**index) % self.maxnodes
+            time.sleep(self._periodic_updates_interval)
 
     def _messageThread(self):
         while self._message_thread_status:
             message = self.comm.recvMessage()
             self.message_executor.handleMessage(message)
-            # print(self.message_executor._finger_table._table)
+            print(self.message_executor._finger_table._table)
 
-    def _initMessageThread(self):
+    def _initThreads(self):
         self._message_thread_status = True
         self._message_thread = threading.Thread(target = self._messageThread)
+        self._update_thread = threading.Thread(target = self._periodic_updates)
         self._message_thread.start()
+        self._update_thread.start()
     
     def _userInputThread(self):
 
@@ -61,8 +76,9 @@ class Node():
             time.sleep(0.5)
 
     def run(self):
-        self._initMessageThread()
+        self._initThreads()
         self._userInputThread()
+        self._update_thread.join()
         self._message_thread.join()
 
 if __name__ == "__main__":

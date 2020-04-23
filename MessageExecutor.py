@@ -137,8 +137,10 @@ class MessageExecutor():
 			self._finger_table.insertNode(node_info["nodeid"])
 			self._hash_table.putNodeInfo(node_info["nodeid"], node_info["ip"], node_info["port"])
 
+
 	def updateTable(self, updateTableMessage):
 		# updateTableMessage = json.loads(updateTableMessage)
+		self._updateNodeInfo(updateTableMessage["meta"])
 		self._comm.sendMessage({
 			self._message_creator.createUpdateTableResponse(),
 			updateTableMessage["meta"]["ip"],
@@ -168,11 +170,11 @@ class MessageExecutor():
 	
 	def handleMessage(self, message):
 		message = json.loads(message)
-		# print("Message Received at handler", message)
+		print("Message Received at handler", message)
 		while True:
 			try:
 				self._message_handler.get(message["type"])(message)
-				# print("Message Handled")
+				print("Message Handled")
 				break
 			except Exception as e:
 				# raise e

@@ -73,10 +73,9 @@ class Messages():
 			}))
 
 	#update message to update finger table
-	def createUpdateTable(self, nodeid):
+	def createUpdateTable(self):
 		return json.dumps(self._getUpdatedCopy({
 			"type":"table_update",
-			"info":nodeid
 			}))
 
 	#respond to the sender on an update message
